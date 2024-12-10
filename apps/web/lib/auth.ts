@@ -21,7 +21,7 @@ export async function signUp(
   }
   const response = await fetch(`${BACKEND_URL}/auth/signup`, {
     method: "POST",
-    headers: { "Content-Type": "application/JSON" },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(validationFields.data),
   });
   if (response.ok) {
