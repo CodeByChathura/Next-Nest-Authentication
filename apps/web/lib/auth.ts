@@ -19,7 +19,8 @@ export async function signUp(
       error: validationFields.error.flatten().fieldErrors,
     };
   }
-  const response = await fetch(`${BACKEND_URL}/auth/signup`, {
+  const response = await fetch(`http://localhost:8080/auth/signup`, {
+    // Hardcoded since the .env did not work for some reason.
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(validationFields.data),
