@@ -26,7 +26,7 @@ export async function signUp(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(validationFields.data),
   });
-  if (response.ok) {
+  if (response.status === 201) {
     redirect("auth/signin");
   } else {
     return {
@@ -66,7 +66,8 @@ export async function signIn(
       user:{
         id:result.id,
         name: result.name
-      }
+      },
+      accesToken:result.accesToken,
     });
    redirect("/");
   } else {
