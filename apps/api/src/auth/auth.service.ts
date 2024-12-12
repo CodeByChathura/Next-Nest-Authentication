@@ -4,7 +4,7 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { verify } from 'argon2';
+import { hash, verify } from 'argon2';
 import { create } from 'domain';
 import { CreateUserDto } from 'src/user/dto/create-user.dto';
 import { UserService } from 'src/user/user.service';
@@ -12,11 +12,11 @@ import { AuthJwtPayload } from './types/auth-jwtPayload';
 import { JwtService } from '@nestjs/jwt';
 import refreshConfig from './config/refresh.config';
 import { ConfigType } from '@nestjs/config';
+import { Verify } from 'crypto';
+import { Role } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
-   
- 
   constructor(
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
@@ -37,14 +37,17 @@ export class AuthService {
     if (!isPasswordMatched)
       throw new UnauthorizedException('Invalid Credentials!');
 
-    return { id: user.id, name: user.name };
+    return { id: user.id, name: user.name, role: user.role };
   }
 
-  async login(userId: number, name?: string) {
+  async login(userId: number, name: string,role:Role) {
     const {accessToken,refreshToken} =await this.generateTokens(userId);
+    const hashedRT = await hash(refreshToken);
+    await this.userService.updateHashedRefreshToken(userId,hashedRT)
     return{
         id: userId,
         name:name,
+        role,
         accessToken,
         refreshToken,
     };
@@ -63,18 +66,24 @@ export class AuthService {
   async validateJwtUser(userId:number){
     const user = await this.userService.findOne(userId);
     if(!user) throw new UnauthorizedException("User not found!");
-    const currentUser = {id:  user.id}
+    const currentUser = {id:  user.id, role:user.role}
     return currentUser;
     }
 
-    async validateRefreshToken(userId: number) {
+    async validateRefreshToken(userId: number, refreshToken:string) {
       const user = await this.userService.findOne(userId);
       if(!user) throw new UnauthorizedException("User not found!");
+
+      const refreshTokenMatched =  await verify(user.hashedRefreshToken, refreshToken);
+
+      if (!refreshTokenMatched) throw new UnauthorizedException("Invalid refresh Token!");
       const currentUser = {id:  user.id}
       return currentUser;
   }
   async refreshToken(userId: number, name:string){
     const {accessToken,refreshToken} =await this.generateTokens(userId);
+    const hashedRT = await hash(refreshToken);
+    await this.userService.updateHashedRefreshToken(userId,hashedRT)
     return{
         id: userId,
         name:name,
@@ -87,6 +96,10 @@ export class AuthService {
     const user = await this.userService.findByEmail(googleUser.email);
     if (user) return user;
     return await this.userService.create(googleUser);
+}
+
+async signOut(userId: number) {
+ return await this.userService.updateHashedRefreshToken(userId,null)
 }
 }
 
